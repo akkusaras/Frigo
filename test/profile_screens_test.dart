@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frigo/app.dart';
 import 'package:frigo/core/router/app_router.dart';
+import 'package:frigo/core/theme/app_colors.dart';
 import 'package:frigo/models/models.dart';
 import 'package:frigo/providers/auth_provider.dart';
 import 'package:frigo/providers/favorites_provider.dart';
@@ -83,8 +84,9 @@ void main() {
   });
 
   group('Profile', () {
-    testWidgets('shows user, live stats, tags and shopping count',
-        (tester) async {
+    testWidgets('shows user, live stats, tags and shopping count', (
+      tester,
+    ) async {
       await pumpAt(tester, '/fridge/profile');
 
       expect(find.text('EY'), findsOneWidget);
@@ -127,8 +129,9 @@ void main() {
   });
 
   group('Favorite recipes', () {
-    testWidgets('grid shows Ready badges, cooked and missing counts',
-        (tester) async {
+    testWidgets('grid shows Ready badges, cooked and missing counts', (
+      tester,
+    ) async {
       await pumpAt(tester, '/fridge/profile/favorites');
 
       expect(find.text('Menemen'), findsOneWidget);
@@ -216,14 +219,48 @@ void main() {
       expect(milk.selected, isFalse);
       expect(none.selected, isTrue);
       expect(
-        find.text('Recipes with these ingredients are hidden from your '
-            'suggestions.'),
+        find.text(
+          'Recipes with these ingredients are hidden from your '
+          'suggestions.',
+        ),
         findsOneWidget,
       );
     });
 
-    testWidgets('save persists allergies, custom ingredient and diet',
-        (tester) async {
+    testWidgets('selected chips render pure white labels on charcoal', (
+      tester,
+    ) async {
+      await pumpAt(tester, '/fridge/profile/allergies');
+
+      Color? labelColor(String key, String label) => tester
+          .widget<RichText>(
+            find.descendant(
+              of: find.byKey(Key(key)),
+              matching: find.byWidgetPredicate(
+                (w) => w is RichText && w.text.toPlainText() == label,
+              ),
+            ),
+          )
+          .text
+          .style
+          ?.color;
+
+      expect(labelColor('allergen-peanuts', 'Peanuts'), Colors.white);
+      expect(labelColor('allergen-milk', 'Milk'), AppColors.charcoal);
+      expect(labelColor('diet-none', 'None'), Colors.white);
+      expect(labelColor('diet-vegan', 'Vegan'), AppColors.charcoal);
+
+      await tester.tap(find.byKey(const Key('allergen-milk')));
+      await tester.tap(find.byKey(const Key('diet-vegan')));
+      await tester.pumpAndSettle();
+      expect(labelColor('allergen-milk', 'Milk'), Colors.white);
+      expect(labelColor('diet-vegan', 'Vegan'), Colors.white);
+      expect(labelColor('diet-none', 'None'), AppColors.charcoal);
+    });
+
+    testWidgets('save persists allergies, custom ingredient and diet', (
+      tester,
+    ) async {
       final container = await pumpAt(tester, '/fridge/profile');
       await tester.tap(find.text('Allergies and diet'));
       await tester.pumpAndSettle();
@@ -265,10 +302,11 @@ void main() {
       await tester.pumpAndSettle();
 
       final profile = container.read(profileProvider);
-      expect(
-        profile.allergies,
-        {Allergen.peanuts, Allergen.sesame, Allergen.eggs},
-      );
+      expect(profile.allergies, {
+        Allergen.peanuts,
+        Allergen.sesame,
+        Allergen.eggs,
+      });
       expect(profile.customAllergies, ['Lactose']);
       expect(profile.diet, Diet.vegetarian);
       expect(container.read(profileRepositoryProvider).loadProfile(), profile);
@@ -280,8 +318,9 @@ void main() {
       expect(find.text('Vegetarian'), findsOneWidget);
     });
 
-    testWidgets('custom chip can be removed and back discards edits',
-        (tester) async {
+    testWidgets('custom chip can be removed and back discards edits', (
+      tester,
+    ) async {
       final container = await pumpAt(tester, '/fridge/profile');
       await tester.tap(find.text('Allergies and diet'));
       await tester.pumpAndSettle();
@@ -316,10 +355,9 @@ void main() {
       addTearDown(container.dispose);
       final favorites = container.read(favoriteRecipesProvider);
       expect(filterFavorites(favorites, '   '), favorites);
-      expect(
-        filterFavorites(favorites, 'MENEMEN').map((f) => f.recipe.id),
-        ['menemen'],
-      );
+      expect(filterFavorites(favorites, 'MENEMEN').map((f) => f.recipe.id), [
+        'menemen',
+      ]);
     });
   });
 }

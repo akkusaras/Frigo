@@ -57,7 +57,9 @@ class _AllergiesScreenState extends ConsumerState<AllergiesScreen> {
   }
 
   void _save() {
-    ref.read(profileProvider.notifier).updateDietary(
+    ref
+        .read(profileProvider.notifier)
+        .updateDietary(
           allergies: _allergies,
           customAllergies: _custom,
           diet: _diet,
@@ -85,7 +87,8 @@ class _AllergiesScreenState extends ConsumerState<AllergiesScreen> {
                 children: [
                   const AlertBanner(
                     icon: Icons.warning_amber_rounded,
-                    message: 'Recipes with these ingredients are hidden from '
+                    message:
+                        'Recipes with these ingredients are hidden from '
                         'your suggestions.',
                   ),
                   const SizedBox(height: 24),
@@ -99,6 +102,8 @@ class _AllergiesScreenState extends ConsumerState<AllergiesScreen> {
                         FilterChip(
                           key: Key('allergen-${allergen.name}'),
                           label: Text(allergen.label),
+                          labelStyle: _chipLabel(_allergies.contains(allergen)),
+                          checkmarkColor: Colors.white,
                           selected: _allergies.contains(allergen),
                           onSelected: (value) => setState(() {
                             value
@@ -110,6 +115,7 @@ class _AllergiesScreenState extends ConsumerState<AllergiesScreen> {
                         InputChip(
                           key: Key('custom-allergy-$custom'),
                           label: Text(custom),
+                          labelStyle: _chipLabel(true),
                           selected: true,
                           showCheckmark: false,
                           deleteIconColor: Colors.white,
@@ -147,6 +153,8 @@ class _AllergiesScreenState extends ConsumerState<AllergiesScreen> {
                         ChoiceChip(
                           key: Key('diet-${diet.name}'),
                           label: Text(diet.label),
+                          labelStyle: _chipLabel(_diet == diet),
+                          checkmarkColor: Colors.white,
                           selected: _diet == diet,
                           onSelected: (_) => setState(() => _diet = diet),
                         ),
@@ -168,17 +176,21 @@ class _AllergiesScreenState extends ConsumerState<AllergiesScreen> {
         ),
       ),
       bottomNavigationBar: BottomActions(
-        children: [
-          FilledButton(onPressed: _save, child: const Text('Save')),
-        ],
+        children: [FilledButton(onPressed: _save, child: const Text('Save'))],
       ),
     );
   }
 
+  /// Selected chips darken to charcoal, so text strictly turns pure white.
+  static TextStyle _chipLabel(bool selected) => TextStyle(
+    color: selected ? Colors.white : AppColors.charcoal,
+    fontWeight: FontWeight.w500,
+  );
+
   static String _dietHint(Diet diet) => switch (diet) {
-        Diet.none => '',
-        Diet.vegetarian => 'No meat, poultry, fish or seafood.',
-        Diet.vegan => 'No animal products, including dairy and eggs.',
-        Diet.halal => 'No pork or alcohol.',
-      };
+    Diet.none => '',
+    Diet.vegetarian => 'No meat, poultry, fish or seafood.',
+    Diet.vegan => 'No animal products, including dairy and eggs.',
+    Diet.halal => 'No pork or alcohol.',
+  };
 }

@@ -9,6 +9,7 @@ import '../../providers/fridge_overview_provider.dart';
 import '../../providers/fridge_provider.dart';
 import '../../providers/profile_provider.dart';
 import '../../providers/repository_providers.dart';
+import 'fridge_cabinet.dart';
 
 /// `2. My Fridge` — the visual fridge home screen.
 class FridgeScreen extends ConsumerWidget {
@@ -52,21 +53,15 @@ class FridgeScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                   ],
-                  Container(
+                  FridgeCabinet(
                     key: const Key('fridge-container'),
-                    padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
-                    decoration: BoxDecoration(
-                      color: AppColors.mint,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: AppColors.charcoal, width: 2),
-                    ),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         for (final shelf in ShelfCategory.values)
                           _Shelf(
                             shelf: shelf,
                             items: shelves[shelf] ?? const [],
-                            isLast: shelf == ShelfCategory.values.last,
                           ),
                       ],
                     ),
@@ -94,15 +89,10 @@ class FridgeScreen extends ConsumerWidget {
 }
 
 class _Shelf extends StatelessWidget {
-  const _Shelf({
-    required this.shelf,
-    required this.items,
-    required this.isLast,
-  });
+  const _Shelf({required this.shelf, required this.items});
 
   final ShelfCategory shelf;
   final List<Ingredient> items;
-  final bool isLast;
 
   @override
   Widget build(BuildContext context) {
@@ -113,8 +103,9 @@ class _Shelf extends StatelessWidget {
         Text(
           shelf.shelfLabel,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: AppColors.charcoal,
-              ),
+            color: AppColors.charcoal.withValues(alpha: 0.75),
+            letterSpacing: 1.2,
+          ),
         ),
         const SizedBox(height: 8),
         if (items.isEmpty)
@@ -122,9 +113,8 @@ class _Shelf extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 10),
             child: Text(
               'Nothing here yet',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.charcoal.withValues(alpha: 0.6),
-                  ),
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: AppColors.charcoal.withValues(alpha: 0.6)),
             ),
           )
         else
@@ -136,28 +126,33 @@ class _Shelf extends StatelessWidget {
       ],
     );
 
-    return Container(
-      key: Key('shelf-${shelf.name}'),
-      width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 96),
-      margin: EdgeInsets.only(top: isDrawer ? 12 : 6),
-      padding: isDrawer
-          ? const EdgeInsets.all(10)
-          : const EdgeInsets.fromLTRB(4, 6, 4, 12),
-      decoration: isDrawer
-          ? BoxDecoration(
-              color: AppColors.card.withValues(alpha: 0.35),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.charcoal, width: 2),
-            )
-          : BoxDecoration(
-              border: isLast
-                  ? null
-                  : const Border(
-                      bottom: BorderSide(color: AppColors.charcoal, width: 2),
-                    ),
-            ),
-      child: content,
+    if (isDrawer) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 14),
+        child: CrisperDrawer(
+          key: Key('shelf-${shelf.name}'),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 72),
+            child: content,
+          ),
+        ),
+      );
+    }
+
+    // Items rest directly on a tempered-glass shelf.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          key: Key('shelf-${shelf.name}'),
+          constraints: const BoxConstraints(minHeight: 84),
+          padding: const EdgeInsets.fromLTRB(4, 6, 4, 6),
+          alignment: Alignment.bottomLeft,
+          child: content,
+        ),
+        const GlassShelf(),
+        const SizedBox(height: 10),
+      ],
     );
   }
 }
@@ -175,6 +170,8 @@ class _ItemTile extends ConsumerWidget {
     return Material(
       key: Key('fridge-item-${item.id}'),
       color: AppColors.card,
+      elevation: 2,
+      shadowColor: const Color(0x551A2421),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
@@ -237,9 +234,7 @@ class _ItemTile extends ConsumerWidget {
             children: [
               Row(
                 children: [
-                  Expanded(
-                    child: Text(item.name, style: textTheme.titleLarge),
-                  ),
+                  Expanded(child: Text(item.name, style: textTheme.titleLarge)),
                   if (badge != null) ExpiryBadge(label: badge),
                 ],
               ),

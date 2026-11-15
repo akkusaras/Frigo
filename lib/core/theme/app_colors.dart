@@ -30,4 +30,22 @@ abstract final class AppColors {
 
   /// Secondary text.
   static const Color mutedText = Color(0xFF5F6B66);
+
+  // ---- Appliance surfaces (fridge cabinet & door) ----
+
+  /// Darker mint used for cabinet shading, hinges and door edges.
+  static const Color mintDeep = Color(0xFF7DB09B);
+
+  /// Lighter mint used for the door's specular sheen.
+  static const Color mintLight = Color(0xFFB4D8C9);
+
+  /// Off-white rubber door seal (gasket).
+  static const Color gasket = Color(0xFFF1F0EA);
+
+  /// Bottom of the interior LED glow (top is pure white).
+  static const Color interiorGlow = Color(0xFFE8F4F0);
+
+  /// Brushed-metal handle tones.
+  static const Color handleLight = Color(0xFF5A6661);
+  static const Color handleDark = Color(0xFF1A2421);
 }

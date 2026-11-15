@@ -8,6 +8,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/frigo_widgets.dart';
 import '../../models/models.dart';
 import '../../providers/shopping_provider.dart';
+import 'fridge_door.dart';
 
 Color noteColor(NoteColor color) => switch (color) {
   NoteColor.yellow => AppColors.noteYellow,
@@ -32,36 +33,57 @@ class ShoppingListScreen extends ConsumerWidget {
               trailing: [FrigoAvatar(onTap: context.pushProfile)],
             ),
             Expanded(
-              child: ListView(
-                key: const Key('shopping-list'),
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-                children: [
-                  if (notes.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      child: Text(
-                        'Your fridge door is clear. Add a note to start a list.',
-                        key: Key('shopping-empty'),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: AppColors.mutedText),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: FridgeDoor(
+                  key: const Key('fridge-door'),
+                  child: ListView(
+                    key: const Key('shopping-list'),
+                    padding: const EdgeInsets.fromLTRB(20, 24, 52, 24),
+                    children: [
+                      if (notes.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 24),
+                          child: Text(
+                            'Your fridge door is clear. Add a note to start '
+                            'a list.',
+                            key: const Key('shopping-empty'),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: AppColors.charcoal.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ),
+                      for (var i = 0; i < notes.length; i++) ...[
+                        StickyNoteCard(
+                          note: notes[i],
+                          tilt: i.isEven ? -1.2 : 1,
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+                      OutlinedButton(
+                        key: const Key('add-note'),
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: Colors.white.withValues(alpha: 0.85),
+                          side: BorderSide(
+                            color: AppColors.charcoal.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        onPressed: () => showAddNoteDialog(context, ref),
+                        child: const Text('+ Add a note'),
                       ),
-                    ),
-                  for (var i = 0; i < notes.length; i++) ...[
-                    StickyNoteCard(note: notes[i], tilt: i.isEven ? -1 : 1),
-                    const SizedBox(height: 16),
-                  ],
-                  OutlinedButton(
-                    key: const Key('add-note'),
-                    onPressed: () => showAddNoteDialog(context, ref),
-                    child: const Text('+ Add a note'),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Missing ingredients from recipes land here '
+                        'automatically.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppColors.charcoal.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Missing ingredients from recipes land here automatically.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColors.mutedText),
-                  ),
-                ],
+                ),
               ),
             ),
           ],
@@ -95,91 +117,116 @@ class StickyNoteCard extends ConsumerWidget {
     final textTheme = Theme.of(context).textTheme;
     return Transform.rotate(
       angle: tilt * math.pi / 180,
-      child: Container(
-        key: Key('note-${note.id}'),
-        padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
-        decoration: BoxDecoration(
-          color: noteColor(note.color),
-          borderRadius: BorderRadius.circular(6),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x14000000),
-              blurRadius: 8,
-              offset: Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    note.title,
-                    style: textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            key: Key('note-${note.id}'),
+            padding: const EdgeInsets.fromLTRB(16, 14, 8, 10),
+            decoration: BoxDecoration(
+              color: noteColor(note.color),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(3),
+                topRight: Radius.circular(3),
+                bottomLeft: Radius.circular(4),
+                bottomRight: Radius.circular(14),
+              ),
+              boxShadow: const [
+                // Contact shadow where the paper meets the door.
+                BoxShadow(
+                  color: Color(0x1F1A2421),
+                  blurRadius: 2,
+                  offset: Offset(0, 1),
                 ),
-                IconButton(
-                  key: Key('note-add-item-${note.id}'),
-                  tooltip: 'Add item',
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.add_rounded, size: 20),
-                  onPressed: () => _addItem(context, ref),
-                ),
-                IconButton(
-                  key: Key('note-remove-${note.id}'),
-                  tooltip: 'Remove note',
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.close_rounded, size: 20),
-                  onPressed: () => _remove(context, ref),
+                // Lifted, curling bottom edge.
+                BoxShadow(
+                  color: Color(0x2E1A2421),
+                  blurRadius: 14,
+                  spreadRadius: -4,
+                  offset: Offset(2, 10),
                 ),
               ],
             ),
-            if (note.items.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Text(
-                  'Nothing on this note yet.',
-                  style: TextStyle(color: AppColors.mutedText),
-                ),
-              ),
-            for (final item in note.items)
-              InkWell(
-                key: Key('shopping-item-${item.id}'),
-                onTap: () => notifier.toggleItem(note.id, item.id),
-                child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Checkbox(
-                      key: Key('shopping-check-${item.id}'),
-                      value: item.isChecked,
-                      activeColor: AppColors.charcoal,
-                      side: const BorderSide(
-                        color: AppColors.charcoal,
-                        width: 1.5,
-                      ),
-                      onChanged: (_) => notifier.toggleItem(note.id, item.id),
-                    ),
                     Expanded(
                       child: Text(
-                        item.name,
-                        style: TextStyle(
-                          color: item.isChecked
-                              ? AppColors.mutedText
-                              : AppColors.charcoal,
-                          decoration: item.isChecked
-                              ? TextDecoration.lineThrough
-                              : null,
+                        note.title,
+                        style: textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
+                    IconButton(
+                      key: Key('note-add-item-${note.id}'),
+                      tooltip: 'Add item',
+                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(Icons.add_rounded, size: 20),
+                      onPressed: () => _addItem(context, ref),
+                    ),
+                    IconButton(
+                      key: Key('note-remove-${note.id}'),
+                      tooltip: 'Remove note',
+                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      onPressed: () => _remove(context, ref),
+                    ),
                   ],
                 ),
-              ),
-          ],
-        ),
+                if (note.items.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'Nothing on this note yet.',
+                      style: TextStyle(color: AppColors.mutedText),
+                    ),
+                  ),
+                for (final item in note.items)
+                  InkWell(
+                    key: Key('shopping-item-${item.id}'),
+                    onTap: () => notifier.toggleItem(note.id, item.id),
+                    child: Row(
+                      children: [
+                        Checkbox(
+                          key: Key('shopping-check-${item.id}'),
+                          value: item.isChecked,
+                          activeColor: AppColors.charcoal,
+                          side: const BorderSide(
+                            color: AppColors.charcoal,
+                            width: 1.5,
+                          ),
+                          onChanged: (_) =>
+                              notifier.toggleItem(note.id, item.id),
+                        ),
+                        Expanded(
+                          child: Text(
+                            item.name,
+                            style: TextStyle(
+                              color: item.isChecked
+                                  ? AppColors.mutedText
+                                  : AppColors.charcoal,
+                              decoration: item.isChecked
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Positioned(
+            top: -7,
+            left: 0,
+            right: 0,
+            child: Center(child: _Magnet(color: note.color)),
+          ),
+        ],
       ),
     );
   }
@@ -190,10 +237,9 @@ class StickyNoteCard extends ConsumerWidget {
       builder: (_) => _AddItemDialog(noteTitle: note.title),
     );
     if (name == null || name.trim().isEmpty) return;
-    final added = ref.read(shoppingNotesProvider.notifier).addItem(
-      note.id,
-      name,
-    );
+    final added = ref
+        .read(shoppingNotesProvider.notifier)
+        .addItem(note.id, name);
     if (!added && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${name.trim()} is already on this note')),
@@ -216,6 +262,39 @@ class StickyNoteCard extends ConsumerWidget {
           ),
         ),
       );
+  }
+}
+
+/// A round fridge magnet pinning a sticky note to the door.
+class _Magnet extends StatelessWidget {
+  const _Magnet({required this.color});
+
+  final NoteColor color;
+
+  @override
+  Widget build(BuildContext context) {
+    final base = switch (color) {
+      NoteColor.yellow => AppColors.coral,
+      NoteColor.pink => AppColors.charcoal,
+    };
+    return Container(
+      width: 16,
+      height: 16,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          center: const Alignment(-0.35, -0.4),
+          colors: [Color.lerp(base, Colors.white, 0.55)!, base],
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x401A2421),
+            blurRadius: 3,
+            offset: Offset(1, 2),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -273,11 +352,9 @@ Future<void> showAddNoteDialog(BuildContext context, WidgetRef ref) async {
     builder: (_) => const _AddNoteDialog(),
   );
   if (draft == null) return;
-  ref.read(shoppingNotesProvider.notifier).addNote(
-    title: draft.title,
-    color: draft.color,
-    items: draft.items,
-  );
+  ref
+      .read(shoppingNotesProvider.notifier)
+      .addNote(title: draft.title, color: draft.color, items: draft.items);
 }
 
 class _NoteDraft {
@@ -313,9 +390,9 @@ class _AddNoteDialogState extends State<_AddNoteDialog> {
       setState(() => _error = 'Give your note a title');
       return;
     }
-    Navigator.of(context).pop(
-      _NoteDraft(_title.text, _color, _items.text.split(RegExp(r'[,\n]'))),
-    );
+    Navigator.of(
+      context,
+    ).pop(_NoteDraft(_title.text, _color, _items.text.split(RegExp(r'[,\n]'))));
   }
 
   @override
@@ -417,9 +494,7 @@ class _ColorSwatch extends StatelessWidget {
               width: selected ? 2 : 1,
             ),
           ),
-          child: selected
-              ? const Icon(Icons.check_rounded, size: 18)
-              : null,
+          child: selected ? const Icon(Icons.check_rounded, size: 18) : null,
         ),
       ),
     );

@@ -7,23 +7,24 @@ abstract final class AppTheme {
   static const double buttonRadius = 14;
 
   static ThemeData light() {
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: AppColors.mint,
-      brightness: Brightness.light,
-    ).copyWith(
-      primary: AppColors.charcoal,
-      onPrimary: Colors.white,
-      secondary: AppColors.mint,
-      onSecondary: AppColors.charcoal,
-      error: AppColors.coral,
-      onError: Colors.white,
-      errorContainer: AppColors.coralSurface,
-      onErrorContainer: AppColors.coral,
-      surface: AppColors.card,
-      onSurface: AppColors.charcoal,
-      outline: AppColors.border,
-      outlineVariant: AppColors.border,
-    );
+    final colorScheme =
+        ColorScheme.fromSeed(
+          seedColor: AppColors.mint,
+          brightness: Brightness.light,
+        ).copyWith(
+          primary: AppColors.charcoal,
+          onPrimary: Colors.white,
+          secondary: AppColors.mint,
+          onSecondary: AppColors.charcoal,
+          error: AppColors.coral,
+          onError: Colors.white,
+          errorContainer: AppColors.coralSurface,
+          onErrorContainer: AppColors.coral,
+          surface: AppColors.card,
+          onSurface: AppColors.charcoal,
+          outline: AppColors.border,
+          outlineVariant: AppColors.border,
+        );
 
     final buttonShape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(buttonRadius),
@@ -115,8 +116,13 @@ abstract final class AppTheme {
         backgroundColor: AppColors.card,
         selectedColor: AppColors.charcoal,
         disabledColor: AppColors.border,
-        labelStyle: const TextStyle(
-          color: AppColors.charcoal,
+        // Selected chips sit on charcoal, so their label must flip to white.
+        labelStyle: TextStyle(
+          color: WidgetStateColor.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? Colors.white
+                : AppColors.charcoal,
+          ),
           fontWeight: FontWeight.w500,
         ),
         secondaryLabelStyle: const TextStyle(

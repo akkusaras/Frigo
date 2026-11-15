@@ -180,6 +180,32 @@ class AlertBanner extends StatelessWidget {
   }
 }
 
+/// Small coral expiry pill (`1d`, `2d`, `expired`).
+class ExpiryBadge extends StatelessWidget {
+  const ExpiryBadge({super.key, required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.coralSurface,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: AppColors.coral,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
 /// Pads a full-width bottom action area above the system inset.
 class BottomActions extends StatelessWidget {
   const BottomActions({super.key, required this.children});

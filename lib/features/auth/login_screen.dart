@@ -1,26 +1,46 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/frigo_widgets.dart';
+import '../../providers/auth_provider.dart';
 
-/// `1. Login` — mock authentication that always lands on the fridge.
-class LoginScreen extends StatefulWidget {
+/// `1. Login` — mock email / Google authentication that lands on the fridge.
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  String? _emailError;
+  String? _passwordError;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _submitEmail() {
+    final email = _emailController.text;
+    final password = _passwordController.text;
+    setState(() {
+      _emailError = AuthNotifier.validateEmail(email);
+      _passwordError = AuthNotifier.validatePassword(password);
+    });
+    final ok = ref.read(authProvider.notifier).signInWithEmail(email, password);
+    if (ok) context.goToFridge();
+  }
+
+  void _signInWithGoogle() {
+    ref.read(authProvider.notifier).signInWithGoogle();
+    context.goToFridge();
   }
 
   @override
@@ -51,8 +71,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
+                  autocorrect: false,
+                  onChanged: (_) {
+                    if (_emailError != null) setState(() => _emailError = null);
+                  },
+                  decoration: InputDecoration(
                     hintText: 'you@example.com',
+                    errorText: _emailError,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -63,23 +88,32 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _passwordController,
                   obscureText: true,
                   textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => context.goToFridge(),
-                  decoration: const InputDecoration(hintText: '••••••••'),
+                  onChanged: (_) {
+                    if (_passwordError != null) {
+                      setState(() => _passwordError = null);
+                    }
+                  },
+                  onSubmitted: (_) => _submitEmail(),
+                  decoration: InputDecoration(
+                    hintText: '••••••••',
+                    errorText: _passwordError,
+                  ),
                 ),
                 const SizedBox(height: 28),
                 FilledButton(
-                  onPressed: context.goToFridge,
+                  onPressed: _submitEmail,
                   child: const Text('Log in'),
                 ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
-                  onPressed: context.goToFridge,
+                  onPressed: _signInWithGoogle,
                   icon: const Icon(Icons.g_mobiledata_rounded, size: 28),
                   label: const Text('Continue with Google'),
                 ),
                 const SizedBox(height: 20),
                 TextButton(
-                  onPressed: context.goToFridge,
+                  // Mock sign-up: validates the same fields and signs in.
+                  onPressed: _submitEmail,
                   child: const Text('Create an account'),
                 ),
               ],

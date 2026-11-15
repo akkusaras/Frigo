@@ -42,6 +42,8 @@ void main() {
 
   testWidgets('login navigates to the fridge', (tester) async {
     await pumpAt(tester, '/login');
+    await tester.enterText(find.byKey(const Key('login-email')), 'you@example.com');
+    await tester.enterText(find.byKey(const Key('login-password')), 'secret123');
     await tester.tap(find.text('Log in'));
     await tester.pumpAndSettle();
 

@@ -1,16 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/frigo_widgets.dart';
+import '../../models/models.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/profile_provider.dart';
+import '../../providers/shopping_provider.dart';
 
 /// `7. Profile` — user summary, stats and settings menu.
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref.watch(profileProvider);
+    final openItems = ref.watch(shoppingOpenItemCountProvider);
     final textTheme = Theme.of(context).textTheme;
+
+    final tags = [
+      ...profile.allergyLabels,
+      if (profile.diet != Diet.none) profile.diet.label,
+    ];
+
     return Scaffold(
       body: SafeArea(
         child: ListView(
@@ -18,20 +31,38 @@ class ProfileScreen extends StatelessWidget {
           children: [
             const ScreenHeader(title: 'Profile', showBack: true),
             const SizedBox(height: 8),
-            const Center(child: FrigoAvatar(size: 84)),
+            Center(child: FrigoAvatar(initials: profile.initials, size: 84)),
             const SizedBox(height: 12),
-            Center(child: Text('Elif Yılmaz', style: textTheme.titleLarge)),
-            Center(child: Text('elif@example.com', style: textTheme.bodySmall)),
+            Center(child: Text(profile.name, style: textTheme.titleLarge)),
+            Center(child: Text(profile.email, style: textTheme.bodySmall)),
             const SizedBox(height: 24),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 children: [
-                  Expanded(child: _StatCard(label: 'Favorites')),
-                  SizedBox(width: 10),
-                  Expanded(child: _StatCard(label: 'Meals cooked')),
-                  SizedBox(width: 10),
-                  Expanded(child: _StatCard(label: 'Items saved')),
+                  Expanded(
+                    child: _StatCard(
+                      key: const Key('stat-favorites'),
+                      value: profile.favoritesCount,
+                      label: 'Favorites',
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _StatCard(
+                      key: const Key('stat-meals-cooked'),
+                      value: profile.mealsCooked,
+                      label: 'Meals cooked',
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _StatCard(
+                      key: const Key('stat-items-saved'),
+                      value: profile.itemsSaved,
+                      label: 'Items saved',
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -52,6 +83,18 @@ class ProfileScreen extends StatelessWidget {
                     ListTile(
                       leading: const Icon(Icons.health_and_safety_outlined),
                       title: const Text('Allergies and diet'),
+                      subtitle: Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: tags.isEmpty
+                            ? Text('None set', style: textTheme.bodySmall)
+                            : Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: [
+                                  for (final tag in tags) _Tag(label: tag),
+                                ],
+                              ),
+                      ),
                       trailing: const Icon(Icons.chevron_right_rounded),
                       onTap: context.pushAllergies,
                     ),
@@ -59,7 +102,16 @@ class ProfileScreen extends StatelessWidget {
                     ListTile(
                       leading: const Icon(Icons.sticky_note_2_outlined),
                       title: const Text('Shopping list'),
-                      trailing: const Icon(Icons.chevron_right_rounded),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            openItems == 1 ? '1 item' : '$openItems items',
+                            style: textTheme.bodySmall,
+                          ),
+                          const Icon(Icons.chevron_right_rounded),
+                        ],
+                      ),
                       onTap: context.pushShoppingList,
                     ),
                   ],
@@ -73,7 +125,10 @@ class ProfileScreen extends StatelessWidget {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.coral,
                 ),
-                onPressed: context.goToLogin,
+                onPressed: () {
+                  ref.read(authProvider.notifier).signOut();
+                  context.goToLogin();
+                },
                 child: const Text('Log out'),
               ),
             ),
@@ -85,8 +140,9 @@ class ProfileScreen extends StatelessWidget {
 }
 
 class _StatCard extends StatelessWidget {
-  const _StatCard({required this.label});
+  const _StatCard({super.key, required this.value, required this.label});
 
+  final int value;
   final String label;
 
   @override
@@ -97,10 +153,36 @@ class _StatCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
         child: Column(
           children: [
-            Text('0', style: textTheme.titleLarge),
+            Text('$value', style: textTheme.titleLarge),
             const SizedBox(height: 4),
             Text(label, style: textTheme.bodySmall, textAlign: TextAlign.center),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Small coral pill for an active allergy / diet tag.
+class _Tag extends StatelessWidget {
+  const _Tag({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.coralSurface,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: AppColors.coral,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

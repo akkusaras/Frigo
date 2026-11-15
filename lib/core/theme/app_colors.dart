@@ -25,6 +25,9 @@ abstract final class AppColors {
   static const Color card = Color(0xFFFFFFFF);
   static const Color border = Color(0xFFE2E8E4);
 
+  /// `Ready` badge on favorite recipes (all ingredients in the fridge).
+  static const Color readyGreen = Color(0xFF3F8F6B);
+
   /// Secondary text.
   static const Color mutedText = Color(0xFF5F6B66);
 }

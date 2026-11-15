@@ -37,6 +37,77 @@ class ShoppingNotesNotifier extends Notifier<List<ShoppingNote>> {
     ]);
   }
 
+  /// Sticks a new hand-written note on the door. Blank item names are
+  /// dropped and duplicates within the note collapsed. Returns the new note,
+  /// or `null` when [title] is blank.
+  ShoppingNote? addNote({
+    required String title,
+    required NoteColor color,
+    Iterable<String> items = const [],
+  }) {
+    final trimmed = title.trim();
+    if (trimmed.isEmpty) return null;
+    final notes = [...state];
+    final base = 'note-${_slug(trimmed).isEmpty ? 'custom' : _slug(trimmed)}';
+    final taken = {for (final n in notes) n.id};
+    var id = base;
+    for (var i = 2; taken.contains(id); i++) {
+      id = '$base-$i';
+    }
+    final takenItems = {
+      for (final n in notes) ...n.items.map((i) => i.id),
+    };
+    final lines = <ShoppingItem>[];
+    for (final raw in items) {
+      final name = raw.trim();
+      if (name.isEmpty ||
+          lines.any((l) => RecipeMatcher.ingredientMatches(l.name, name))) {
+        continue;
+      }
+      final itemId = _uniqueItemId(takenItems, id, name);
+      takenItems.add(itemId);
+      lines.add(ShoppingItem(id: itemId, name: name));
+    }
+    final note = ShoppingNote(id: id, title: trimmed, color: color, items: lines);
+    _save([...notes, note]);
+    return note;
+  }
+
+  /// Adds [name] to the note [noteId]. Re-opens a ticked-off duplicate on
+  /// that note; returns `false` when nothing changed.
+  bool addItem(String noteId, String name) {
+    final trimmed = name.trim();
+    final index = state.indexWhere((n) => n.id == noteId);
+    if (trimmed.isEmpty || index < 0) return false;
+    final note = state[index];
+    final existing = note.items.indexWhere(
+      (i) => RecipeMatcher.ingredientMatches(i.name, trimmed),
+    );
+    final List<ShoppingItem> items;
+    if (existing >= 0) {
+      if (!note.items[existing].isChecked) return false;
+      items = [...note.items]
+        ..[existing] = note.items[existing].copyWith(isChecked: false);
+    } else {
+      final taken = {
+        for (final n in state) ...n.items.map((i) => i.id),
+      };
+      items = [
+        ...note.items,
+        ShoppingItem(id: _uniqueItemId(taken, noteId, trimmed), name: trimmed),
+      ];
+    }
+    _save([...state]..[index] = note.copyWith(items: items));
+    return true;
+  }
+
+  /// Puts back a previous snapshot of the door (used by `Undo`).
+  void restore(List<ShoppingNote> notes) => _save([...notes]);
+
+  /// Takes the note [noteId] off the door.
+  void removeNote(String noteId) =>
+      _save([for (final n in state) if (n.id != noteId) n]);
+
   /// Puts [names] on the yellow `For <recipe>` note of [recipe], creating
   /// the note when needed. Names already open on any note are skipped and
   /// ticked-off duplicates are re-opened. Returns how many names were added

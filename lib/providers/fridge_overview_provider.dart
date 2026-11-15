@@ -4,9 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/services/recipe_matcher.dart';
 import '../models/models.dart';
 import 'fridge_provider.dart';
-import 'profile_provider.dart';
+import 'recipe_suggestions_provider.dart';
 import 'repository_providers.dart';
-import 'service_providers.dart';
 
 /// Fridge items grouped by shelf, each shelf sorted soonest-expiring first.
 final fridgeShelvesProvider = Provider<Map<ShelfCategory, List<Ingredient>>>((
@@ -18,18 +17,11 @@ final fridgeShelvesProvider = Provider<Map<ShelfCategory, List<Ingredient>>>((
 /// Expiry banner shown at the top of `2. My Fridge`, or `null` when nothing
 /// is about to expire.
 final fridgeExpiryAlertProvider = Provider<ExpiryAlert?>((ref) {
-  final fridge = ref.watch(fridgeProvider);
-  final profile = ref.watch(profileProvider);
-  final recipes = ref.watch(recipeRepositoryProvider).loadRecipes();
-  final matcher = ref.watch(recipeMatcherProvider);
-  final now = ref.watch(clockProvider)();
-  final result = matcher.match(
-    recipes: recipes,
-    fridge: fridge,
-    profile: profile,
-    now: now,
+  return buildExpiryAlert(
+    fridge: ref.watch(fridgeProvider),
+    matches: ref.watch(recipeSuggestionsProvider).matches,
+    now: ref.watch(clockProvider)(),
   );
-  return buildExpiryAlert(fridge: fridge, matches: result.matches, now: now);
 });
 
 /// Groups [items] into the three shelves (every shelf is present, possibly

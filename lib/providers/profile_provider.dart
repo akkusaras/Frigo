@@ -23,6 +23,18 @@ class ProfileNotifier extends Notifier<UserProfile> {
     _save(state.copyWith(favoriteRecipeIds: favorites));
   }
 
+  /// Counts a finished Cooking Mode session towards `Meals cooked`.
+  void recordCooked(String recipeId) {
+    _save(
+      state.copyWith(
+        cookedCounts: {
+          ...state.cookedCounts,
+          recipeId: state.timesCooked(recipeId) + 1,
+        },
+      ),
+    );
+  }
+
   /// Replaces the allergy and diet settings from `9. Allergies and diet`.
   void updateDietary({
     required Set<Allergen> allergies,

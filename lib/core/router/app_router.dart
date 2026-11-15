@@ -110,6 +110,7 @@ extension FrigoNavigation on BuildContext {
         queryParameters: {AppRoutes.scanSourceParam: source.name},
       );
   void pushRecipeSuggestions() => pushNamed(AppRoutes.recipeSuggestions);
+  void goToRecipeSuggestions() => goNamed(AppRoutes.recipeSuggestions);
   void pushRecipeDetail(String recipeId) => pushNamed(
         AppRoutes.recipeDetail,
         pathParameters: {AppRoutes.recipeIdParam: recipeId},

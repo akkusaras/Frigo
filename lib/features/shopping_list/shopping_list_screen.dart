@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/router/app_router.dart';
@@ -115,6 +116,10 @@ class StickyNoteCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(shoppingNotesProvider.notifier);
     final textTheme = Theme.of(context).textTheme;
+    void toggle(String itemId) {
+      HapticFeedback.lightImpact();
+      notifier.toggleItem(note.id, itemId);
+    }
     return Transform.rotate(
       angle: tilt * math.pi / 180,
       child: Stack(
@@ -187,7 +192,7 @@ class StickyNoteCard extends ConsumerWidget {
                 for (final item in note.items)
                   InkWell(
                     key: Key('shopping-item-${item.id}'),
-                    onTap: () => notifier.toggleItem(note.id, item.id),
+                    onTap: () => toggle(item.id),
                     child: Row(
                       children: [
                         Checkbox(
@@ -198,8 +203,7 @@ class StickyNoteCard extends ConsumerWidget {
                             color: AppColors.charcoal,
                             width: 1.5,
                           ),
-                          onChanged: (_) =>
-                              notifier.toggleItem(note.id, item.id),
+                          onChanged: (_) => toggle(item.id),
                         ),
                         Expanded(
                           child: Text(

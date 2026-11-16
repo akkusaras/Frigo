@@ -23,16 +23,26 @@ class ProfileNotifier extends Notifier<UserProfile> {
     _save(state.copyWith(favoriteRecipeIds: favorites));
   }
 
-  /// Counts a finished Cooking Mode session towards `Meals cooked`.
-  void recordCooked(String recipeId) {
+  /// Counts a finished Cooking Mode session towards `Meals cooked`, and
+  /// [expiringItemsUsed] fridge items that were about to go off towards the
+  /// `Items saved` impact counter.
+  void recordCooked(String recipeId, {int expiringItemsUsed = 0}) {
     _save(
       state.copyWith(
         cookedCounts: {
           ...state.cookedCounts,
           recipeId: state.timesCooked(recipeId) + 1,
         },
+        itemsSaved: state.itemsSaved + expiringItemsUsed,
       ),
     );
+  }
+
+  /// Restores the mockup's demo profile, discarding whatever is saved.
+  void resetToDemo() {
+    final repository = ref.read(profileRepositoryProvider);
+    repository.resetToDemo();
+    state = repository.loadProfile();
   }
 
   /// Replaces the allergy and diet settings from `9. Allergies and diet`.

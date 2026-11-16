@@ -3,13 +3,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/frigo_widgets.dart';
 import '../../models/models.dart';
+import '../../providers/fridge_provider.dart';
 import '../../providers/profile_provider.dart';
 import '../../providers/repository_providers.dart';
+import '../../providers/service_providers.dart';
 import '../recipes/recipe_detail_screen.dart';
 import '../recipes/recipe_widgets.dart';
 import 'step_countdown.dart';
@@ -52,11 +55,17 @@ class _CookingSessionState extends ConsumerState<_CookingSession> {
   void initState() {
     super.initState();
     _timers = [for (final s in _steps) StepCountdown(total: s.duration)];
+    // Keep the screen awake while cooking so a step's timer never gets cut
+    // off by the device locking mid-simmer. Swallow failures: there is no
+    // platform implementation under `flutter test`, and a screen that
+    // dims early is a minor annoyance, not worth crashing over.
+    unawaited(WakelockPlus.enable().catchError((_) {}));
   }
 
   @override
   void dispose() {
     _ticker?.cancel();
+    unawaited(WakelockPlus.disable().catchError((_) {}));
     super.dispose();
   }
 
@@ -115,12 +124,27 @@ class _CookingSessionState extends ConsumerState<_CookingSession> {
 
   void _goTo(int stepIndex) {
     if (!mounted) return;
+    HapticFeedback.lightImpact();
     setState(() => _index = stepIndex.clamp(0, _steps.length - 1));
+  }
+
+  /// Fridge items this recipe used that were expiring soon — these count
+  /// towards the `Items saved` impact counter on Profile.
+  int _expiringItemsSaved() {
+    final now = ref.read(clockProvider)();
+    final fridge = ref.read(fridgeProvider);
+    final usable = [for (final i in fridge) if (!i.isExpired(now)) i];
+    final match = ref
+        .read(recipeMatcherProvider)
+        .scoreRecipe(widget.recipe, usable, now);
+    return match.expiringUses.length;
   }
 
   void _finish() {
     final recipe = widget.recipe;
-    ref.read(profileProvider.notifier).recordCooked(recipe.id);
+    ref
+        .read(profileProvider.notifier)
+        .recordCooked(recipe.id, expiringItemsUsed: _expiringItemsSaved());
     final messenger = ScaffoldMessenger.of(context);
     context.goToFridge();
     messenger

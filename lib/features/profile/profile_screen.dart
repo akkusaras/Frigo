@@ -6,6 +6,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/frigo_widgets.dart';
 import '../../models/models.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/fridge_provider.dart';
 import '../../providers/profile_provider.dart';
 import '../../providers/shopping_provider.dart';
 
@@ -66,6 +67,11 @@ class ProfileScreen extends ConsumerWidget {
                 ],
               ),
             ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _ImpactCard(itemsSaved: profile.itemsSaved),
+            ),
             const SizedBox(height: 24),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -118,7 +124,16 @@ class ProfileScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: OutlinedButton(
+                key: const Key('reset-demo-data'),
+                onPressed: () => _confirmResetDemoData(context, ref),
+                child: const Text('Reset demo data'),
+              ),
+            ),
+            const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: OutlinedButton(
@@ -130,6 +145,87 @@ class ProfileScreen extends ConsumerWidget {
                   context.goToLogin();
                 },
                 child: const Text('Log out'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Confirms, then wipes the fridge, shopping list and profile back to
+  /// the mockup's demo state — handy for resetting between presentations.
+  Future<void> _confirmResetDemoData(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Reset demo data?'),
+        content: const Text(
+          'This replaces your fridge, shopping list, allergies, diet and '
+          'favorites with the original demo data. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            key: const Key('reset-demo-data-confirm'),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Reset'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    ref.read(fridgeProvider.notifier).resetToDemo();
+    ref.read(shoppingNotesProvider.notifier).resetToDemo();
+    ref.read(profileProvider.notifier).resetToDemo();
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Demo data restored')));
+  }
+}
+
+/// Highlights how many expiring ingredients were cooked and eaten before
+/// going to waste.
+class _ImpactCard extends StatelessWidget {
+  const _ImpactCard({required this.itemsSaved});
+
+  final int itemsSaved;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Card(
+      color: AppColors.mint.withValues(alpha: 0.25),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            const Icon(Icons.eco_rounded, color: AppColors.readyGreen),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    itemsSaved == 1
+                        ? '1 ingredient saved from going to waste'
+                        : '$itemsSaved ingredients saved from going to waste',
+                    style: textTheme.titleSmall?.copyWith(
+                      color: AppColors.readyGreen,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Cooked before they expired — nice work!',
+                    style: textTheme.bodySmall,
+                  ),
+                ],
               ),
             ),
           ],

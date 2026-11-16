@@ -104,6 +104,13 @@ class ShoppingNotesNotifier extends Notifier<List<ShoppingNote>> {
   /// Puts back a previous snapshot of the door (used by `Undo`).
   void restore(List<ShoppingNote> notes) => _save([...notes]);
 
+  /// Restores the mockup's demo sticky notes, discarding whatever is saved.
+  void resetToDemo() {
+    final repository = ref.read(shoppingRepositoryProvider);
+    repository.resetToDemo();
+    state = List.unmodifiable(repository.loadNotes());
+  }
+
   /// Takes the note [noteId] off the door.
   void removeNote(String noteId) =>
       _save([for (final n in state) if (n.id != noteId) n]);

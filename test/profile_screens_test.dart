@@ -7,9 +7,11 @@ import 'package:frigo/core/theme/app_colors.dart';
 import 'package:frigo/models/models.dart';
 import 'package:frigo/providers/auth_provider.dart';
 import 'package:frigo/providers/favorites_provider.dart';
+import 'package:frigo/providers/fridge_provider.dart';
 import 'package:frigo/providers/profile_provider.dart';
 import 'package:frigo/providers/repository_providers.dart';
 import 'package:frigo/providers/router_provider.dart';
+import 'package:frigo/providers/shopping_provider.dart';
 
 final _today = DateTime(2026, 11, 15, 9);
 
@@ -115,6 +117,10 @@ void main() {
       );
       expect(find.text('Peanuts'), findsOneWidget);
       expect(find.text('5 items'), findsOneWidget);
+      expect(
+        find.text('23 ingredients saved from going to waste'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('log out clears the session', (tester) async {
@@ -125,6 +131,47 @@ void main() {
       await tester.pumpAndSettle();
       expect(container.read(authProvider), isNull);
       expect(find.text('Log in'), findsOneWidget);
+    });
+  });
+
+  group('Reset demo data', () {
+    testWidgets('cancel keeps the current state', (tester) async {
+      final container = await pumpAt(tester, '/fridge/profile');
+      container.read(fridgeProvider.notifier).remove('ing-milk');
+
+      await tester.tap(find.byKey(const Key('reset-demo-data')));
+      await tester.pumpAndSettle();
+      expect(find.text('Reset demo data?'), findsOneWidget);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(container.read(fridgeProvider), hasLength(12));
+    });
+
+    testWidgets('confirming restores the fridge, shopping list and profile',
+        (tester) async {
+      final container = await pumpAt(tester, '/fridge/profile');
+      container.read(fridgeProvider.notifier).remove('ing-milk');
+      container.read(shoppingNotesProvider.notifier).removeNote(
+            'note-weekly',
+          );
+      container.read(profileProvider.notifier).updateDietary(
+            allergies: {Allergen.shellfish},
+            customAllergies: const [],
+            diet: Diet.vegan,
+          );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('reset-demo-data')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('reset-demo-data-confirm')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Demo data restored'), findsOneWidget);
+      expect(container.read(fridgeProvider), hasLength(13));
+      expect(container.read(shoppingNotesProvider), hasLength(2));
+      expect(container.read(profileProvider).diet, Diet.none);
+      expect(container.read(profileProvider).allergies, {Allergen.peanuts});
     });
   });
 

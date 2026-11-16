@@ -162,5 +162,21 @@ void main() {
       expect(find.text('Enjoy your menemen!'), findsOneWidget);
       expect(c.read(profileProvider).timesCooked('menemen'), before + 1);
     });
+
+    testWidgets('finishing a recipe that uses an expiring item lifts the '
+        'Items saved counter', (tester) async {
+      // Baked sea bass uses sea bass, which expires tomorrow (1d) in the
+      // seed fridge — menemen's ingredients (used above) are all far from
+      // expiry, so that cook left this counter untouched.
+      final c = await pumpAt(tester, '/fridge/recipes/baked-sea-bass/cook');
+      final before = c.read(profileProvider).itemsSaved;
+
+      await _tap(tester, 'step-next');
+      await _tap(tester, 'step-next');
+      await tester.tap(find.byKey(const Key('finish-cooking')));
+      await tester.pumpAndSettle();
+
+      expect(c.read(profileProvider).itemsSaved, before + 1);
+    });
   });
 }

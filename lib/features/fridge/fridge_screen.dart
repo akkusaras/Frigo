@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/date_format.dart';
 import '../../core/widgets/frigo_widgets.dart';
 import '../../models/models.dart';
 import '../../providers/fridge_overview_provider.dart';
@@ -183,7 +184,7 @@ class _ItemTile extends ConsumerWidget {
         borderRadius: BorderRadius.circular(12),
         onTap: () {
           HapticFeedback.lightImpact();
-          _showDetails(context, ref, item, badge);
+          _showDetails(context, item);
         },
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -208,13 +209,56 @@ class _ItemTile extends ConsumerWidget {
     );
   }
 
-  static Future<void> _showDetails(
-    BuildContext context,
-    WidgetRef ref,
-    Ingredient item,
-    String? badge,
-  ) {
-    final now = ref.read(clockProvider)();
+  static Future<void> _showDetails(BuildContext context, Ingredient item) {
+    return showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.card,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => IngredientDetailsSheet(
+        ingredientId: item.id,
+        onRemoved: (name) => ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text('$name removed'))),
+      ),
+    );
+  }
+}
+
+/// Bottom sheet for a single fridge item: shows its shelf, quantity and
+/// expiry, lets the user change the expiry date (quick day offsets or a
+/// calendar picker) and remove the item. Watches [fridgeProvider] so every
+/// edit is reflected in place.
+class IngredientDetailsSheet extends ConsumerWidget {
+  const IngredientDetailsSheet({
+    super.key,
+    required this.ingredientId,
+    this.onRemoved,
+  });
+
+  final String ingredientId;
+
+  /// Called with the item's name after it is removed from the fridge.
+  final ValueChanged<String>? onRemoved;
+
+  static const _quickOffsets = [
+    (label: 'Today', days: 0),
+    (label: 'Tomorrow', days: 1),
+    (label: 'In 3 days', days: 3),
+    (label: 'In 1 week', days: 7),
+  ];
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final item = ref
+        .watch(fridgeProvider)
+        .where((i) => i.id == ingredientId)
+        .firstOrNull;
+    if (item == null) return const SizedBox.shrink();
+
+    final now = ref.watch(clockProvider)();
+    final today = DateTime(now.year, now.month, now.day);
+    final badge = item.expiryBadge(now);
     final days = item.daysUntilExpiry(now);
     final expiryText = switch (days) {
       null => 'No expiry date',
@@ -224,62 +268,146 @@ class _ItemTile extends ConsumerWidget {
       _ => 'Expires in $days days',
     };
     final textTheme = Theme.of(context).textTheme;
+    final notifier = ref.read(fridgeProvider.notifier);
 
-    return showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: AppColors.card,
-      showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(child: Text(item.name, style: textTheme.titleLarge)),
-                  if (badge != null) ExpiryBadge(label: badge),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                [
-                  item.shelf.displayName,
-                  if (item.quantity != null) item.quantity!,
-                ].join(' · '),
-                style: textTheme.bodySmall,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                expiryText,
-                style: TextStyle(
-                  color: badge != null ? AppColors.coral : AppColors.charcoal,
-                  fontWeight: FontWeight.w600,
+    void setExpiry(DateTime? date) {
+      HapticFeedback.lightImpact();
+      notifier.updateExpiry(item.id, date);
+    }
+
+    Future<void> pickDate() async {
+      final current = item.expiresOn;
+      final first = today.subtract(const Duration(days: 365));
+      final last = today.add(const Duration(days: 365 * 3));
+      var initial = current == null
+          ? today
+          : DateTime(current.year, current.month, current.day);
+      if (initial.isBefore(first)) initial = first;
+      if (initial.isAfter(last)) initial = last;
+      final picked = await showDatePicker(
+        context: context,
+        initialDate: initial,
+        firstDate: first,
+        lastDate: last,
+        helpText: 'Expiry date',
+        confirmText: 'Save',
+      );
+      if (picked != null) setExpiry(picked);
+    }
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(child: Text(item.name, style: textTheme.titleLarge)),
+                if (badge != null) ExpiryBadge(label: badge),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              [
+                item.shelf.displayName,
+                if (item.quantity != null) item.quantity!,
+              ].join(' · '),
+              style: textTheme.bodySmall,
+            ),
+            const SizedBox(height: 12),
+            InkWell(
+              key: const Key('expiry-edit'),
+              borderRadius: BorderRadius.circular(8),
+              onTap: pickDate,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: expiryText,
+                              style: TextStyle(
+                                color: badge != null
+                                    ? AppColors.coral
+                                    : AppColors.charcoal,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (item.expiresOn != null)
+                              TextSpan(
+                                text: ' · ${formatShortDate(item.expiresOn!)}',
+                                style: textTheme.bodySmall,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const Icon(
+                      Icons.edit_calendar_outlined,
+                      size: 20,
+                      color: AppColors.charcoal,
+                      semanticLabel: 'Edit expiry date',
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.coral,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'CHANGE EXPIRY DATE',
+              style: textTheme.labelSmall?.copyWith(
+                color: AppColors.charcoal.withValues(alpha: 0.75),
+                letterSpacing: 1.2,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final offset in _quickOffsets)
+                  ActionChip(
+                    key: Key('expiry-offset-${offset.days}'),
+                    label: Text(offset.label),
+                    onPressed: () =>
+                        setExpiry(today.add(Duration(days: offset.days))),
                   ),
-                  onPressed: () {
-                    ref.read(fridgeProvider.notifier).remove(item.id);
-                    Navigator.of(sheetContext).pop();
-                    ScaffoldMessenger.of(context)
-                      ..hideCurrentSnackBar()
-                      ..showSnackBar(
-                        SnackBar(content: Text('${item.name} removed')),
-                      );
-                  },
-                  icon: const Icon(Icons.delete_outline_rounded),
-                  label: const Text('Remove from fridge'),
+                ActionChip(
+                  key: const Key('expiry-pick-date'),
+                  avatar: const Icon(Icons.calendar_today_outlined, size: 16),
+                  label: const Text('Pick a date'),
+                  onPressed: pickDate,
                 ),
+                if (item.expiresOn != null)
+                  ActionChip(
+                    key: const Key('expiry-clear'),
+                    label: const Text('No expiry'),
+                    onPressed: () => setExpiry(null),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.coral,
+                ),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  notifier.remove(item.id);
+                  onRemoved?.call(item.name);
+                },
+                icon: const Icon(Icons.delete_outline_rounded),
+                label: const Text('Remove from fridge'),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

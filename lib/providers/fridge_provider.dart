@@ -25,8 +25,30 @@ class FridgeNotifier extends Notifier<List<Ingredient>> {
   void addAll(Iterable<Ingredient> ingredients) =>
       _save([...state, ...ingredients]);
 
-  void remove(String ingredientId) =>
-      _save([for (final i in state) if (i.id != ingredientId) i]);
+  void remove(String ingredientId) => _save([
+    for (final i in state)
+      if (i.id != ingredientId) i,
+  ]);
+
+  /// Changes the expiry date of the item with [ingredientId] (or clears it
+  /// when [expiresOn] is `null`) and persists the fridge immediately. The
+  /// time of day is dropped so the item expires on a whole calendar day.
+  /// Unknown ids are ignored.
+  void updateExpiry(String ingredientId, DateTime? expiresOn) {
+    if (!state.any((i) => i.id == ingredientId)) return;
+    final day = expiresOn == null
+        ? null
+        : DateTime(expiresOn.year, expiresOn.month, expiresOn.day);
+    _save([
+      for (final i in state)
+        if (i.id == ingredientId)
+          day == null
+              ? i.copyWith(clearExpiresOn: true)
+              : i.copyWith(expiresOn: day)
+        else
+          i,
+    ]);
+  }
 
   /// Restores the mockup's demo fridge, discarding whatever is saved.
   void resetToDemo() {

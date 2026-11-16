@@ -127,7 +127,10 @@ void main() {
 
       await tester.tap(find.text('Sea bass'));
       await tester.pumpAndSettle();
-      expect(find.text('Expires tomorrow'), findsOneWidget);
+      expect(
+        find.text('Expires tomorrow · 16 Nov', findRichText: true),
+        findsOneWidget,
+      );
       expect(find.text('Meat and leftovers · 2 fillets'), findsOneWidget);
 
       await tester.tap(find.text('Remove from fridge'));

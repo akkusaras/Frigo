@@ -7,6 +7,7 @@ import 'core/persistence/local_store.dart';
 import 'providers/repository_providers.dart';
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
   runApp(
     ProviderScope(

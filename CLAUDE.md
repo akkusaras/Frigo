@@ -2,8 +2,20 @@
 
 ## Project Overview
 - **App Name:** Frigo — "Cook with what you already have."
-- **Platform & Stack:** Flutter (Android target), Dart, `flutter_riverpod` (state management), `go_router` (navigation), clean repository pattern with local in-memory seed data (designed for easy swap to Firebase / Vision OCR later).
+- **Platform & Stack:** Flutter, Dart, `flutter_riverpod` (state management), `go_router` (navigation), clean repository pattern backed by JSON in `shared_preferences` behind a `LocalStore` abstraction (designed for easy swap to Firebase / Vision OCR later).
+- **Supported Platforms:** iOS, macOS desktop, and Android are all first-class targets. Every feature must build and run on all three.
 - **Core Loop:** Add ingredients -> View visual fridge -> Get ranked matching recipes -> Cook with step-by-step timers -> Add missing ingredients to shopping list.
+
+## Roadmap Status
+- **Phase 0 — Core app (complete):** All 9 screens + Recipe Detail and Cooking Mode, recipe matching & allergy engine, appliance-realism fridge/door redesign (`TASKS.md` Tasks 1–10).
+- **Phase 1 — Persistence & physical UX (complete):** JSON-backed `shared_preferences` persistence for fridge, shopping notes and profile with first-launch seeding and `Reset demo data`; `HapticFeedback.lightImpact()` on fridge taps, checkbox toggles and cooking step navigation; `wakelock_plus` keeps the screen awake in Cooking Mode; live `Items saved` impact counter on Profile (Tasks 11–12). Suite: 131 passing tests, zero analyzer issues.
+- **Phase 2 — Scanning & notifications (next):** Real barcode and receipt scanning feeding `5. Check what we found` (replacing the mock detections), and local expiry notifications for items nearing their date.
+
+## Cross-Platform Rules
+- `main()` must call `WidgetsFlutterBinding.ensureInitialized()` before any plugin access (e.g. `SharedPreferences.getInstance()`).
+- Only add plugins that support iOS, macOS and Android; if a capability is missing on one platform (e.g. camera scanning on macOS desktop), provide a graceful fallback such as image/file import or manual entry — never a crash or dead route.
+- Declare required permissions per platform when adding Phase 2 plugins: `Info.plist` usage strings on iOS/macOS (camera, notifications), macOS sandbox entitlements (`macos/Runner/*.entitlements`), and `AndroidManifest.xml` permissions (camera, `POST_NOTIFICATIONS`).
+- Guard platform-specific behavior (haptics, wakelock, notifications) so it degrades silently where unsupported and stays mockable in tests.
 
 ## Visual Design System (Strict Adherence to Mockups)
 - **App Background:** Soft Pale Sage `#F4F7F4`
